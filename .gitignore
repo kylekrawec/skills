@@ -1,0 +1,10 @@
+# teach skill — per-user learning data must never be committed or shipped.
+# Real workspaces live under ${XDG_DATA_HOME:-$HOME/.local/share}/teach/<topic>/.
+# These patterns guard against data accidentally landing in the skill folder
+# (only the SKILL.md and *-FORMAT.md templates belong there).
+skills/teach/MISSION.md
+skills/teach/NOTES.md
+skills/teach/RESOURCES.md
+skills/teach/learning-records/
+skills/teach/lessons/
+skills/teach/reference/
