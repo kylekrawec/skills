@@ -1,6 +1,7 @@
 {
   "name": "kyle-krawec-skills",
   "skills": [
+    "./skills/alembic",
     "./skills/commit",
     "./skills/omarchy",
     "./skills/simple",
