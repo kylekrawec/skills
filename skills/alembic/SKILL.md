@@ -1,7 +1,6 @@
 ---
 name: alembic
-description: Run development through a three-tier alembic — cheap workers produce the crude, a dispatcher session condenses it, this session (the head) reviews and ships only distillate.
-disable-model-invocation: true
+description: Set up and run an alembic — a three-tier model pipeline where cheap workers build, a separate dispatcher session condenses, and this session (the head) reviews so only distillate ships. Use when the user mentions an alembic, or asks to orchestrate work across model tiers with a reviewer over a dispatcher.
 argument-hint: "(optional) the first charge — a task to run through the vessel"
 ---
 
