@@ -31,6 +31,17 @@ fail() { echo "ERROR=$1" >&2; exit 1; }
 [ -d "$DIR" ] || fail "no such directory: $DIR"
 CLAUDE=$(command -v claude) || fail "claude not on PATH"
 
+# Everything platform-specific branches on this one detection: the session
+# socket directory, how a pid's cwd is read, and whether the built-in
+# terminal recipes (macOS-only) are usable at all.
+OS=$(uname -s)
+case "$OS" in
+  Darwin) SOCK_DIR="/tmp/cc-socks" ;;
+  Linux)  SOCK_DIR="${XDG_RUNTIME_DIR:-/tmp}/cc-socks" ;;
+  *) fail "unsupported OS '$OS' (expected Darwin or Linux)" ;;
+esac
+echo "OS=$OS"
+
 # Routing tables name models like "opus-5"; the CLI wants an alias ("opus")
 # or a full id ("claude-opus-5"). Normalize the table form so a session never
 # boots model-less with "issue with the selected model".
@@ -74,7 +85,11 @@ echo "TERMINAL=$TERMINAL"
 # claude processes whose cwd is the project dir, for before/after diffing
 claude_pids_in_dir() {
   for pid in $(ps -axo pid=,command= | awk '{c=$2; sub(".*/","",c); if (c=="claude") print $1}'); do
-    cwd=$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')
+    if [ "$OS" = Linux ]; then
+      cwd=$(readlink "/proc/$pid/cwd" 2>/dev/null)
+    else
+      cwd=$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')
+    fi
     [ "$cwd" = "$DIR" ] && echo "$pid"
   done
 }
@@ -84,6 +99,7 @@ if [ -n "$SPAWN_TEMPLATE" ]; then
   CMD=$(printf '%s' "$SPAWN_TEMPLATE" | sed "s|{launch}|$LAUNCH|g")
   sh -c "$CMD" || fail "spawnTemplate failed: $CMD"
 else
+  [ "$OS" = Darwin ] || fail "built-in recipes for terminal '$TERMINAL' are macOS-only — on $OS, set spawnTemplate in $SETTINGS"
   case "$TERMINAL" in
     Ghostty)  open -na Ghostty.app --args -e "$LAUNCH" || fail "Ghostty spawn failed" ;;
     Terminal) osascript -e "tell app \"Terminal\" to do script \"$LAUNCH\"" >/dev/null || fail "Terminal spawn failed" ;;
@@ -105,7 +121,7 @@ done
 [ -n "$NEWPID" ] || { echo "STATUS=NOT_SPAWNED"; exit 1; }
 
 echo "PID=$NEWPID"
-SOCK="/tmp/cc-socks/$NEWPID.sock"
+SOCK="$SOCK_DIR/$NEWPID.sock"
 echo "EXPECTED_SOCK=$SOCK"
 
 while [ "$(date +%s)" -lt "$DEADLINE" ]; do
