@@ -32,7 +32,7 @@ codex exec \
   --add-dir "$ARTIFACT_DIR" \
   -s danger-full-access \
   -o "$REPORT" \
-  "$(cat "$PROMPT")"
+  "$(cat "$PROMPT")" < /dev/null
 ```
 
 Use `-s danger-full-access` for GUI automation, iOS simulators, desktop app launching, screenshots, or access outside the repo. For non-GUI checks that only need the repo and artifact directory, prefer `-s workspace-write`. Add `--skip-git-repo-check` when the working directory is not a git repository.

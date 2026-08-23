@@ -35,7 +35,7 @@ codex exec \
   --add-dir "$ARTIFACT_DIR" \
   -s workspace-write \
   -o "$REPORT" \
-  "$(cat "$PROMPT")"
+  "$(cat "$PROMPT")" < /dev/null
 ```
 
 Use `-s workspace-write` by default. Use `-s danger-full-access` only when the implementation truly needs access outside the repo, app launch automation, simulator work, package manager global state, or other machine-level operations.
@@ -51,6 +51,9 @@ Tell Codex:
 - That it must preserve unrelated user changes.
 - That it must not commit, push, deploy, or edit global config.
 - Which verification commands to run, or to explain why they were skipped.
+- That a verification command that hangs or asks to escape the sandbox
+  (package managers often do under workspace-write) is a stop-and-report,
+  not an escalation to request.
 - To write a concise final report with files changed, verification, and unresolved questions.
 
 Keep the task bounded. If the requested work bundles several substantial changes, split it into separate Codex runs or ask the user to choose the first scope.

@@ -27,9 +27,21 @@ alongside this one:
 
 A codex worker sees nothing but its prompt file — not this rulebook, not
 your conversation — so the brief IS the worker's whole world: repo path,
-`file:line` pointers, fences, verification commands, and the report shape of
-rule 16 all go in the prompt. Workers share the one tree via `-C`; parallel
-workers are safe only on fenced, disjoint files.
+`file:line` pointers, fences, the measurements to report, and the report
+shape of rule 16 all go in the prompt. Workers share the one tree via
+`-C`; parallel workers are safe only on fenced, disjoint files.
+
+The workspace-write sandbox **blocks package managers**: a worker cannot
+run `pnpm` at all — even `pnpm --version` hangs — so a brief that orders
+the gates manufactures an approval dialog asking to escape the sandbox,
+an escalation that buys nothing, since rule 18 already reserves the
+combined gate run for you, on the integrated tree. A brief's verification
+section names what to REPORT — measurements, behaviors, file evidence —
+never package-manager gates to run. This is rule 9 applied to the
+worker's own toolchain: with no gate command in the brief, the escalation
+prompt never becomes reachable. Where something gate-like genuinely must
+run worker-side, the brief says the sandbox blocks it and that an
+escalation request is a stop-and-report, never a thing to ask for.
 
 Before the first spawn of a session, run `codex login status`. An
 unauthenticated `codex exec` has been observed to exit 0 having done
@@ -65,9 +77,16 @@ what they are choosing.
 
 **Headless mechanics**: the codex skills carry the command shape
 (self-contained prompt file, artifact directory, `codex exec -C <repo>
--s workspace-write -o <report>`). Always capture the run's own output too —
-`> "$ARTIFACT_DIR/stdout.log" 2>&1` — a dead run's only evidence (the 401s
-above) appears in captured stdout; without it there is nothing to autopsy.
+-s workspace-write -o <report> < /dev/null`). The stdin redirect is not
+optional: without it `codex exec` has been observed parking forever on
+"Reading additional input from stdin..." — one line of stdout, no edits,
+no report, and exit 0 when stopped, a second way the exit code lies. Write
+the prompt file in a separate call from the exec (the observed parks
+shared a shell with the heredoc that wrote the prompt — derived, but cheap
+to avoid). And always capture the run's own output —
+`> "$ARTIFACT_DIR/stdout.log" 2>&1` — both silent modes, the 401s above
+and the stdin park, are visible nowhere else; without the log there is
+nothing to autopsy.
 
 **Interactive mechanics — herdr** (all of this observed in real runs): give
 workers a dedicated tab — never split your own pane repeatedly, the layout
@@ -82,38 +101,37 @@ herdr agent start <name> --kind codex --pane <pane> --timeout 60000 \
   -- -m gpt-5.6-sol -s workspace-write      # rule 5: model pinned after --
 herdr agent prompt <name> "Read <contract.md>, then <brief.md>; execute it
   exactly. Write your report to <report.md> when done."
-herdr agent wait <name> --timeout 900000
+<this skill's directory>/watch-worker.sh <name> <report.md>
                                             # REQUIRED, backgrounded — see below
 herdr pane read <pane> --source visible --lines <N>
 ```
 
-**Arm the settle wait — required, not a tip.** `herdr agent prompt`
-returns immediately, and a worker's later state changes reach nobody:
-headless gets a free harness notification when the backgrounded process
-exits, interactive does not, and the observed failure mode is the
-dispatcher sitting unaware while finished workers wait — until the human
-notices first, which inverts the point of the pipeline. Backgrounding
-`herdr agent wait <name> --timeout <ms>` converts the settle into that
-same notification. Do **not** narrow it with `--until idle`: the default
-settles on idle, done, or **blocked**, and blocked — an approval or
-question dialog — is the one state that most needs a human promptly. A
-wait pinned to idle sleeps through it until the timeout expires, which
-converts "approvals route to the human" into fifteen silent minutes of
-nobody learning an approval is waiting. The corollary: settled is not
-finished — check `herdr agent get <name>` for which state it landed in
-before treating the work as done. (Arm separate `--until idle` and
-`--until blocked` waits only when the two events genuinely need to be
-distinguished as they happen; the single default call is the safer shape.)
-For a fan-out, sequential waits in one backgrounded call return when the
-LAST worker settles — the right barrier before integrating, but wrong for
-spotting a block, since a block in the second worker stays masked until
-the first settles: one call per worker when you need to know promptly
-which one stopped and why. Two caveats: **prompt first, then wait** — an
-agent that has not yet started working is already idle, so a premature
-wait returns instantly and uselessly; and give the timeout real headroom,
-because an expired wait looks identical to a satisfied one — one more
-reason completion is confirmed by artifact (the report exists), never by
-the wait alone.
+**Arm a watcher — required, not a tip.** `herdr agent prompt` returns
+immediately, and a worker's later state changes reach nobody: headless
+gets a free harness notification when the backgrounded process exits,
+interactive does not, and the observed failure mode is the dispatcher
+sitting unaware while finished workers wait — until the human notices
+first, which inverts the point of the pipeline. A bare backgrounded
+`herdr agent wait` is not enough either: it settles on idle, done, or
+**blocked**, and blocked — an approval or question dialog — is a settle
+but not an end; it means more work comes after a human acts. A one-shot
+wait retires on it, and that failure has been observed whole: the wait
+fired on an approval, the dispatcher surfaced it and stood down, the
+human answered, and the worker finished unwatched — the same inversion,
+reached by following the previous version of this rule. The principle:
+**any wait that can return on blocked must be re-armed or replaced by a
+loop that watches through it.** The shipped answer is `watch-worker.sh`
+in this skill's directory (shown in the block above): run it backgrounded
+for one notification on exit, or under Monitor for a line per state
+transition. It reports each transition as it happens — so a block still
+surfaces promptly, the reason never to narrow a wait to idle — watches
+through blocked, exits 0 only when the report exists AND the agent sits
+idle or done, and exits 3 if the agent disappears. Caveats: delete any
+stale report before spawning (a leftover file reads as instant
+completion); prompt first, then watch (a not-yet-started agent is already
+idle); one watcher per worker, so a block in one is never masked by
+another; and completion is still confirmed by artifact plus a final
+`herdr agent get`, never by the watcher alone.
 
 Gotchas: dispatch the brief **by path**, never pasted — a 1000-word brief
 pasted into a TUI is unreadable for the human who is supposed to be
@@ -156,7 +174,10 @@ until [ -s <report.md> ] || [ $SECONDS -gt 900 ]; do sleep 15; done
 A blocked worker never writes a report, so this poll cannot distinguish
 "blocked on an approval" from "still working": when it times out,
 `capture-pane` before concluding anything — an approval dialog sitting
-there is the human's to answer, same policy as herdr's `agent_blocked`.
+there is the human's to answer, same policy as herdr's `agent_blocked` —
+and re-arm the poll after they answer. A block is a pause, not an end;
+a watcher that concludes at the first quiet moment recreates the
+inversion this section exists to prevent.
 Everything transport-independent still applies unchanged: brief dispatched
 by path, report path named in the brief, prompt first then wait, and
 completion confirmed by artifact, never by the poll returning.
@@ -314,7 +335,7 @@ pinned, verify by artifact.
     any file in its commit set. Never leave the head to infer the second
     signal from silence. And prompt hand-back presumes you know the work is
     done: with interactive workers that knowledge exists only if you armed
-    the settle wait — silence from an unwatched pane is indistinguishable
+    the watcher — silence from an unwatched pane is indistinguishable
     from work still in progress.
 21. **Worker tiering**: gpt-5.6-terra only for work that is provably
     mechanical against a verified spec; everything else runs on gpt-5.6-sol.
