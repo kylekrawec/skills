@@ -2,6 +2,9 @@
   "name": "kyle-krawec-skills",
   "skills": [
     "./skills/alembic",
+    "./skills/codex-computer-use",
+    "./skills/codex-implementation",
+    "./skills/codex-review",
     "./skills/commit",
     "./skills/omarchy",
     "./skills/simple",
