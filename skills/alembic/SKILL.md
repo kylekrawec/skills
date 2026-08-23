@@ -26,9 +26,7 @@ review, verification, and process control.
 
 ## Choosing the tiers
 
-Rankings, higher = better (cost and intelligence from Artificial Analysis,
-July 2026, except sonnet-5's intelligence, held down from real unsupervised
-use). Intelligence is how hard a problem the model handles unsupervised;
+Rankings, higher = better. Intelligence is how hard a problem the model handles unsupervised;
 taste covers UI/UX, code quality, API design, and copy. The chart moves —
 re-derive the roles from whatever chart is current:
 
@@ -36,7 +34,7 @@ re-derive the roles from whatever chart is current:
 | ------------- | ---- | ------------ | ----- |
 | gpt-5.6-terra | 8    | 7            | 4     |
 | gpt-5.6-sol   | 6    | 10           | 5     |
-| opus-5        | 4    | 8            | 8     |
+| opus-5        | 4    | 7            | 8     |
 | fable-5       | 2    | 10           | 9     |
 
 - **Head**: maximum intelligence and taste, cost be damned — it reads reports
