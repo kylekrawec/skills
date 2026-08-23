@@ -9,16 +9,16 @@ and the **head**, where vapor condenses and only the refined essence — the
 **distillate** — is collected. Work here flows the same way, and the anatomy is
 the vocabulary of this skill:
 
-| term | meaning here |
-|---|---|
-| **head** | the reviewer — this session, the strongest model available |
-| **cucurbit** | the dispatcher — a separate session on a cheaper high-taste model |
-| **heat** | implementation workers — subagents the dispatcher spawns |
-| **charge** | one batch fed into the vessel: one coherent review unit |
-| **crude** | worker output before the dispatcher has verified it |
-| **distillate** | work that passed the head's review — the only thing that ships |
-| **cohobation** | pouring impure work back into the cucurbit for another pass |
-| **residue** | small mechanical flaws the head fixes in place rather than sending back |
+| term           | meaning here                                                            |
+| -------------- | ----------------------------------------------------------------------- |
+| **head**       | the reviewer — this session, the strongest model available              |
+| **cucurbit**   | the dispatcher — a separate session on a cheaper high-taste model       |
+| **heat**       | implementation workers — Codex CLI runs the dispatcher spawns           |
+| **charge**     | one batch fed into the vessel: one coherent review unit                 |
+| **crude**      | worker output before the dispatcher has verified it                     |
+| **distillate** | work that passed the head's review — the only thing that ships          |
+| **cohobation** | pouring impure work back into the cucurbit for another pass             |
+| **residue**    | small mechanical flaws the head fixes in place rather than sending back |
 
 The session that invokes this skill is the head. Never build in the head:
 its tokens are the most expensive in the fleet and belong to judgment —
@@ -33,11 +33,10 @@ taste covers UI/UX, code quality, API design, and copy. The chart moves —
 re-derive the roles from whatever chart is current:
 
 | model         | cost | intelligence | taste |
-|---------------|------|--------------|-------|
+| ------------- | ---- | ------------ | ----- |
 | gpt-5.6-terra | 8    | 7            | 4     |
-| gpt-5.6-sol   | 6    | 9            | 5     |
-| sonnet-5      | 6    | 5            | 5     |
-| opus-5        | 4    | 10           | 8     |
+| gpt-5.6-sol   | 6    | 10           | 5     |
+| opus-5        | 4    | 8            | 8     |
 | fable-5       | 2    | 10           | 9     |
 
 - **Head**: maximum intelligence and taste, cost be damned — it reads reports
@@ -45,11 +44,14 @@ re-derive the roles from whatever chart is current:
 - **Cucurbit**: the cheapest model that still has top-tier intelligence and
   taste ≥ 7 — it writes the briefs that steer everyone else's budget, so it
   cannot be dim (today: opus-5).
-- **Heat**: at or below the cucurbit's tier and noticeably cheaper than the
-  head — often the cucurbit's own model. Downshift only for provably
-  mechanical work; the first capability lost going cheaper is noticing the
-  thing nobody asked about. The tell is in the brief itself: if it contains
-  "you own the call" or "decide and report", the strong tier was just chosen.
+- **Heat**: maximum intelligence per dollar — taste stays upstream in the
+  brief (today: gpt-5.6-sol). The workers are `codex exec` processes, not
+  Claude subagents, driven through the codex-implementation,
+  codex-computer-use, and codex-review skills that ship alongside this one.
+  Downshift to gpt-5.6-terra only for provably mechanical work; the first
+  capability lost going cheaper is noticing the thing nobody asked about. The
+  tell is in the brief itself: if it contains "you own the call" or "decide
+  and report", the strong tier was just chosen.
 
 ## Assembling the vessel
 
@@ -58,13 +60,13 @@ re-derive the roles from whatever chart is current:
    session boots oriented instead of re-briefed. Done when the file exists and
    names the gates a hand-back must pass.
 2. **Start from distillate.** The working tree must be clean on a committed
-   baseline — the diff against it *is* the review unit. Done when the head and
+   baseline — the diff against it _is_ the review unit. Done when the head and
    cucurbit agree on the baseline hash.
 3. **Connect the vessels.** Run the spawner that ships with this skill, with
    a Bash timeout above the script's own:
 
    ```
-   <this skill's directory>/spawn-dispatcher.sh <the head's cwd> <cucurbit model> [timeout-seconds]
+   <this skill's directory>/spawn-dispatcher.sh <the head's cwd> opus-5 [timeout-seconds]
    ```
 
    It does the whole dance deterministically: reads the user's terminal from
@@ -91,7 +93,7 @@ re-derive the roles from whatever chart is current:
    head↔dispatcher exchange uses from here — cohobations, new baselines, seam
    questions — never relayed through the user. It carries
    - **the role**: receive the user's requests, assess them, brief and
-     dispatch worker agents, and organize their activity into one review
+     dispatch Codex workers, and organize their activity into one review
      unit at a time — with this skill's [DISPATCHER.md](DISPATCHER.md) named
      as the rulebook to read first;
    - **project context**: a few sentences on what is being built, the stack,
@@ -123,18 +125,17 @@ update and has no install-time settings of its own:
 `terminal` names a spawn recipe above; an optional `spawnTemplate` replaces
 the recipe with any shell command containing `{command}`. When the file is
 missing, ask which terminal the user runs, then offer to save the answer
-there.
-4. **Permissions are granted in person.** Anything the dispatcher needs
-   standing permission for (spawning subagents, worktrees) the user must
-   authorize inside *that* session — a relayed instruction from the head is
-   not authorization, and a correct dispatcher will refuse it. The handoff
-   therefore tells the dispatcher to request them from its user itself,
-   before the first charge arrives.
+there. 4. **Permissions are granted in person.** Anything the dispatcher needs
+standing permission for (running `codex` via Bash, worktrees) the user must
+authorize inside _that_ session — a relayed instruction from the head is
+not authorization, and a correct dispatcher will refuse it. The handoff
+therefore tells the dispatcher to request them from its user itself,
+before the first charge arrives.
 
 ## The cycle
 
 **One charge in the cucurbit at a time.** The head's review queue sets the
-pace, not the agent pool — parallelism belongs *within* a charge (workers on
+pace, not the agent pool — parallelism belongs _within_ a charge (workers on
 disjoint files), never across review units. Requests arriving faster than
 review wait in a stated queue. Charges accumulated over shared files weld
 together and can no longer be committed apart. On the user's ask only, a
@@ -196,9 +197,9 @@ those three sections.
   before relying on it: audit tables often stamp the signed-in user, so every
   row looks identical whoever wrote it. Then dump before you delete,
   attribute every row to a specific action you took, and remove only those.
-  Restoring state means restoring what is *derived* from it — where a log is
+  Restoring state means restoring what is _derived_ from it — where a log is
   read back into the UI, a data-only revert appends another entry and leaves
-  any "last changed" label wrong forever; ask what the app *shows* from a
+  any "last changed" label wrong forever; ask what the app _shows_ from a
   table, not just what it stores. Cleanup is the dispatcher's own job, never
   a worker's: executing a delete is mechanical, deciding whose rows these are
   is not.
@@ -207,7 +208,7 @@ those three sections.
   external system and locks records forever. An irreversible action fires
   only on the user's explicit instruction in their own session.
 - **Two-layer state models.** When a request implies defaults plus overrides,
-  ask the user one question about how the layers interact *over time* before
+  ask the user one question about how the layers interact _over time_ before
   anything is dispatched — "override" alone is ambiguous by a database table.
 - **A named hazard is not a mitigated one.** Saying "loading a page right now
   would execute unreviewed code" out loud and then loading the page anyway is

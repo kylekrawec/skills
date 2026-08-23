@@ -8,9 +8,28 @@ never commit. These rules are distilled from real runs of this pattern,
 most of them from their failures.
 
 **First move on arrival**: ask your user, in this session, for standing
-permission to spawn worker agents (worktree isolation included). The head
-cannot grant it by relay, and waiting until the first charge to ask stalls
-the vessel.
+permission to run the Codex CLI via Bash (`codex exec`, `codex review`) and
+git worktree commands. The head cannot grant it by relay, and waiting until
+the first charge to ask stalls the vessel.
+
+## Spawning workers
+
+Workers are Codex CLI processes on **gpt-5.6-sol** — a different vendor's
+agent, not Claude subagents. Spawn them through the codex skills installed
+alongside this one; each carries the exact command shape (self-contained
+prompt file, artifact directory, `codex exec -C <repo> -s workspace-write
+-o <report>`):
+
+- **codex-implementation** — build work: scoped code changes in the tree.
+- **codex-computer-use** — runtime verification: browsers, simulators,
+  screenshots, the measurements of rule 15.
+- **codex-review** — an independent review pass over a diff before hand-back.
+
+A codex worker sees nothing but its prompt file — not this rulebook, not
+your conversation — so the brief IS the worker's whole world: repo path,
+`file:line` pointers, fences, verification commands, and the report shape of
+rule 16 all go in the prompt. Workers share the one tree via `-C`; parallel
+workers are safe only on fenced, disjoint files.
 
 ## Briefing
 
@@ -31,15 +50,17 @@ the vessel.
    edits only, never a whole-file write, never a formatter run, and a named
    region per worker. When a fence forces duplication (copy a rule instead of
    moving it), log the follow-up debt in the same message that creates it.
-5. **Pin the model explicitly on every spawn.** Inheritance is invisible and
-   changes out from under you. Never interrupt a working agent to ask about
-   its own configuration.
+5. **Pin the model explicitly on every spawn** — `-m gpt-5.6-sol` on every
+   `codex` invocation (`-m gpt-5.6-terra` only where rule 21 allows). The
+   default lives in codex config and changes out from under you. Never
+   interrupt a working agent to ask about its own configuration.
 6. **Pass environment workarounds forward** — the working driver script, the
    two non-obvious gotchas — so one worker's discovery is every worker's
    equipment. Never let two agents solve the same infrastructure problem.
-7. **Assume a finished worker is gone.** Resuming one may fail outright, so
-   write every brief to survive respawn, and give rework a fresh
-   self-contained brief. Rework briefs need one thing ordinary briefs do not:
+7. **Assume a finished worker is gone.** Each `codex exec` is a one-shot
+   session — treat resuming as unavailable. Write every brief to survive
+   respawn, and give rework a fresh self-contained brief. Rework briefs need
+   one thing ordinary briefs do not:
    an explicit statement that uncommitted work is already in the tree and
    must not be reverted, reformatted, or committed.
 
@@ -128,9 +149,11 @@ the vessel.
     `git status` evidence, not an assertion — only once no live worker holds
     any file in its commit set. Never leave the head to infer the second
     signal from silence.
-21. **Worker tiering**: cheap tier only for work that is provably mechanical
-    against a verified spec. Anything touching a data model, accessibility,
-    user-facing semantics, or "is this even the right change" gets the strong
-    tier — noticing the thing nobody asked about is the first capability to
-    degrade going cheaper. If your brief says "you own the call", you have
-    already chosen the tier.
+21. **Worker tiering**: gpt-5.6-terra only for work that is provably
+    mechanical against a verified spec; everything else runs on gpt-5.6-sol.
+    Anything touching a data model, accessibility, user-facing semantics, or
+    "is this even the right change" gets sol — noticing the thing nobody
+    asked about is the first capability to degrade going cheaper. If your
+    brief says "you own the call", you have already chosen the tier. And
+    sol's intelligence is not taste: UI/UX, copy, and API-shape decisions
+    are made in the brief, by you — never delegated down.
